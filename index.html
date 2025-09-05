@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Csoportos Jelző</title>
+    <title>Valós Idejű Csoportos Jelző</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -13,7 +14,7 @@
         }
         
         body {
-            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -26,7 +27,7 @@
             max-width: 500px;
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             overflow: hidden;
             position: relative;
         }
@@ -39,6 +40,34 @@
             font-size: 24px;
             font-weight: bold;
             position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .connected {
+            background: #00ff00;
+            box-shadow: 0 0 8px #00ff00;
+        }
+        
+        .disconnected {
+            background: #ff3333;
         }
         
         .page {
@@ -101,6 +130,11 @@
             box-shadow: 0 6px 20px rgba(255, 94, 98, 0.6);
         }
         
+        .action-button.alert-active {
+            background: linear-gradient(to right, #00b09b, #96c93d);
+            box-shadow: 0 4px 15px rgba(0, 176, 155, 0.4);
+        }
+        
         .status-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -117,12 +151,21 @@
             font-weight: bold;
             font-size: 18px;
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         
         .status-item.active {
             background: linear-gradient(to right, #00b09b, #96c93d);
             transform: scale(1.05);
             box-shadow: 0 5px 15px rgba(0, 176, 155, 0.4);
+        }
+        
+        .status-text {
+            font-size: 12px;
+            margin-top: 5px;
         }
         
         .nav-buttons {
@@ -142,11 +185,18 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .nav-button:hover {
             transform: translateY(-3px);
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .nav-button i {
+            margin-right: 8px;
         }
         
         .instructions {
@@ -156,6 +206,7 @@
             margin: 15px 0;
             font-size: 14px;
             color: #555;
+            line-height: 1.5;
         }
         
         .notification {
@@ -170,10 +221,23 @@
             transform: translateX(150%);
             transition: transform 0.5s ease;
             z-index: 1000;
+            display: flex;
+            align-items: center;
+        }
+        
+        .notification i {
+            margin-right: 10px;
         }
         
         .notification.show {
             transform: translateX(0);
+        }
+        
+        .last-update {
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            margin-top: 10px;
         }
         
         @media (max-width: 480px) {
@@ -190,20 +254,30 @@
                 padding: 12px 5px;
                 font-size: 16px;
             }
+            
+            .action-button {
+                padding: 14px;
+                font-size: 18px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            Csoportos Jelző Alkalmazás
+            <div></div> <!-- Empty div for spacing -->
+            <div>Valós Idejű Csoportos Jelző</div>
+            <div class="connection-status">
+                <div class="status-dot connected" id="connectionDot"></div>
+                <span id="connectionText">Online</span>
+            </div>
         </div>
         
         <div id="page1" class="page active">
-            <h2 style="text-align: center; margin-bottom: 15px; color: #444;">Válaszd ki a számod</h2>
+            <h2 style="text-align: center; margin-bottom: 15px; color: #444;"><i class="fas fa-user"></i> Válaszd ki a számod</h2>
             
             <div class="instructions">
-                Válaszd ki a saját azonosítód (1-14), majd kattints a "Jelző képernyő" gombra, ahol láthatod mindenkinek a jelzését.
+                <i class="fas fa-info-circle"></i> Válaszd ki a saját azonosítód (1-14), majd kattints a "Jelző képernyő" gombra. Itt láthatod mind a 14 jelző állapotát valós időben.
             </div>
             
             <div class="user-selection">
@@ -211,48 +285,144 @@
             </div>
             
             <div class="nav-buttons">
-                <button class="nav-button" onclick="showPage('page2')">Jelző képernyő</button>
+                <button class="nav-button" onclick="showPage('page2')"><i class="fas fa-tv"></i> Jelző képernyő</button>
             </div>
         </div>
         
         <div id="page2" class="page">
-            <h2 style="text-align: center; margin-bottom: 15px; color: #444;">Jelző képernyő</h2>
+            <h2 style="text-align: center; margin-bottom: 15px; color: #444;"><i class="fas fa-tv"></i> Jelző képernyő</h2>
             
             <div class="instructions">
-                Itt láthatod, hogy ki jelez éppen. A saját jelzésedet az alul lévő gombbal adhatod le vagy vonhatod vissza.
+                <i class="fas fa-info-circle"></i> Valós idejű áttekintés: itt láthatod, hogy ki jelez éppen. A saját jelzésedet az alul lévő gombbal adhatod le vagy vonhatod vissza.
             </div>
             
             <div class="status-grid">
                 <!-- 1-14 státusz elemek -->
             </div>
             
-            <button id="toggleAlertButton" class="action-button">JELZÉS KÜLDÉSE</button>
+            <div id="currentUserInfo" style="text-align: center; margin: 15px 0; font-weight: bold; color: #4a6cfa;"></div>
+            
+            <button id="toggleAlertButton" class="action-button"><i class="fas fa-bell"></i> JELZÉS KÜLDÉSE</button>
+            
+            <div class="last-update" id="lastUpdate">
+                Utolsó frissítés: soha
+            </div>
             
             <div class="nav-buttons">
-                <button class="nav-button" onclick="showPage('page1')">Vissza a választáshoz</button>
+                <button class="nav-button" onclick="showPage('page1')"><i class="fas fa-arrow-left"></i> Vissza a választáshoz</button>
+                <button class="nav-button" onclick="simulateOtherUserActivity()"><i class="fas fa-sync"></i> Szimuláció</button>
             </div>
         </div>
     </div>
     
-    <div class="notification" id="notification">Jelzés elküldve!</div>
+    <div class="notification" id="notification">
+        <i class="fas fa-bell"></i>
+        <span>Jelzés elküldve!</span>
+    </div>
 
     <script>
+        // Szimulált valós idejű kommunikáció
+        const simulateRealTimeSync = {
+            // Valós alkalmazásban itt lenne a WebSocket vagy Firebase kapcsolat
+            listeners: [],
+            
+            // Szimulált kapcsolat állapota
+            isConnected: true,
+            
+            // Csatlakozás a szimulált szerverhez
+            connect() {
+                console.log("Kapcsolódás a valós idejű szolgáltatáshoz...");
+                this.isConnected = true;
+                updateConnectionStatus(true);
+                
+                // Szimuláljuk a szerver válaszát
+                setTimeout(() => {
+                    this.onMessage({ type: "connection_established" });
+                }, 800);
+            },
+            
+            // Üzenet küldése a szervernek
+            send(message) {
+                console.log("Üzenet küldése:", message);
+                // Szimuláljuk a hálózati késleltetést
+                setTimeout(() => {
+                    // Szimuláljuk, hogy mindenki megkapja az üzenetet
+                    this.listeners.forEach(listener => {
+                        listener(message);
+                    });
+                }, 200 + Math.random() * 300);
+            },
+            
+            // Üzenet fogadása
+            onMessage(callback) {
+                this.listeners.push(callback);
+            },
+            
+            // Kapcsolat szimulált megszakítása/újracsatlakoztatása
+            toggleConnection() {
+                this.isConnected = !this.isConnected;
+                updateConnectionStatus(this.isConnected);
+                
+                if (this.isConnected) {
+                    // Újracsatlakozás szimulálása
+                    setTimeout(() => {
+                        this.onMessage({ 
+                            type: "sync_all",
+                            data: Array(14).fill(false)
+                        });
+                    }, 500);
+                }
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', function() {
             // Elemek inicializálása
             const userSelection = document.querySelector('.user-selection');
             const statusGrid = document.querySelector('.status-grid');
             const toggleAlertButton = document.getElementById('toggleAlertButton');
             const notification = document.getElementById('notification');
+            const currentUserInfo = document.getElementById('currentUserInfo');
+            const lastUpdateElement = document.getElementById('lastUpdate');
             
             let selectedUser = null;
             let alertActive = false;
             const userStatuses = Array(14).fill(false);
             
+            // Kapcsolódás a szimulált valós idejű szolgáltatáshoz
+            simulateRealTimeSync.connect();
+            
+            // Eseményfigyelő a valós idejű üzenetekre
+            simulateRealTimeSync.onMessage(function(message) {
+                if (message.type === "user_alert") {
+                    // Frissítjük a felhasználó állapotát
+                    userStatuses[message.userId - 1] = message.active;
+                    updateStatusDisplay();
+                    
+                    // Ha a mi állapotunk változott, frissítjük a gombot is
+                    if (selectedUser === message.userId) {
+                        alertActive = message.active;
+                        toggleAlertButton.textContent = alertActive ? 
+                            '<i class="fas fa-bell-slash"></i> JELZÉS VISSZAVONÁSA' : 
+                            '<i class="fas fa-bell"></i> JELZÉS KÜLDÉSE';
+                        toggleAlertButton.classList.toggle('alert-active', alertActive);
+                    }
+                    
+                    updateLastUpdateTime();
+                } else if (message.type === "sync_all") {
+                    // Szinkronizáljuk az összes állapotot
+                    for (let i = 0; i < 14; i++) {
+                        userStatuses[i] = message.data[i] || false;
+                    }
+                    updateStatusDisplay();
+                    updateLastUpdateTime();
+                }
+            });
+            
             // Felhasználó gombok létrehozása (1-14)
             for (let i = 1; i <= 14; i++) {
                 const userBtn = document.createElement('button');
                 userBtn.className = 'user-btn';
-                userBtn.textContent = i;
+                userBtn.innerHTML = `<i class="fas fa-user"></i><br>${i}`;
                 userBtn.addEventListener('click', function() {
                     selectUser(i);
                 });
@@ -261,7 +431,11 @@
                 const statusItem = document.createElement('div');
                 statusItem.className = 'status-item';
                 statusItem.id = `status-${i}`;
-                statusItem.innerHTML = `${i}<br><span style="font-size: 12px;">inaktív</span>`;
+                statusItem.innerHTML = `
+                    <i class="fas fa-user"></i>
+                    <div>${i}</div>
+                    <div class="status-text">inaktív</div>
+                `;
                 statusGrid.appendChild(statusItem);
             }
             
@@ -279,8 +453,14 @@
                 });
                 
                 // Jelzés gomb szövegének beállítása
-                toggleAlertButton.textContent = userStatuses[userId-1] ? 'JELZÉS VISSZAVONÁSA' : 'JELZÉS KÜLDÉSE';
+                toggleAlertButton.innerHTML = userStatuses[userId-1] ? 
+                    '<i class="fas fa-bell-slash"></i> JELZÉS VISSZAVONÁSA' : 
+                    '<i class="fas fa-bell"></i> JELZÉS KÜLDÉSE';
+                toggleAlertButton.classList.toggle('alert-active', userStatuses[userId-1]);
                 alertActive = userStatuses[userId-1];
+                
+                // Információ a kiválasztott felhasználóról
+                currentUserInfo.textContent = `Te most a(z) ${userId}. szám vagy`;
             }
             
             // Jelzés küldése/visszavonása
@@ -290,14 +470,26 @@
                     return;
                 }
                 
-                alertActive = !alertActive;
-                userStatuses[selectedUser-1] = alertActive;
+                if (!simulateRealTimeSync.isConnected) {
+                    showNotification('Nincs kapcsolat! Nem lehet jelzést küldeni.');
+                    return;
+                }
                 
-                // Státusz frissítése
-                updateStatusDisplay();
+                alertActive = !alertActive;
+                
+                // Üzenet küldése a szervernek
+                simulateRealTimeSync.send({
+                    type: "user_alert",
+                    userId: selectedUser,
+                    active: alertActive,
+                    timestamp: new Date().toISOString()
+                });
                 
                 // Gomb szöveg frissítése
-                toggleAlertButton.textContent = alertActive ? 'JELZÉS VISSZAVONÁSA' : 'JELZÉS KÜLDÉSE';
+                toggleAlertButton.innerHTML = alertActive ? 
+                    '<i class="fas fa-bell-slash"></i> JELZÉS VISSZAVONÁSA' : 
+                    '<i class="fas fa-bell"></i> JELZÉS KÜLDÉSE';
+                toggleAlertButton.classList.toggle('alert-active', alertActive);
                 
                 // Értesítés megjelenítése
                 showNotification(alertActive ? 'Jelzés elküldve!' : 'Jelzés visszavonva!');
@@ -309,23 +501,51 @@
                     const statusElement = document.getElementById(`status-${i}`);
                     if (userStatuses[i-1]) {
                         statusElement.classList.add('active');
-                        statusElement.innerHTML = `${i}<br><span style="font-size: 12px;">jelzett</span>`;
+                        statusElement.innerHTML = `
+                            <i class="fas fa-bell"></i>
+                            <div>${i}</div>
+                            <div class="status-text">jelzett</div>
+                        `;
                     } else {
                         statusElement.classList.remove('active');
-                        statusElement.innerHTML = `${i}<br><span style="font-size: 12px;">inaktív</span>`;
+                        statusElement.innerHTML = `
+                            <i class="fas fa-user"></i>
+                            <div>${i}</div>
+                            <div class="status-text">inaktív</div>
+                        `;
                     }
                 }
             }
             
+            // Utolsó frissítés idejének frissítése
+            function updateLastUpdateTime() {
+                const now = new Date();
+                lastUpdateElement.textContent = `Utolsó frissítés: ${now.toLocaleTimeString()}`;
+            }
+            
             // Értesítés megjelenítése
             function showNotification(message) {
-                notification.textContent = message;
+                notification.querySelector('span').textContent = message;
                 notification.classList.add('show');
                 
                 setTimeout(function() {
                     notification.classList.remove('show');
                 }, 3000);
             }
+            
+            // Kapcsolat állapotának frissítése
+            window.updateConnectionStatus = function(isConnected) {
+                const connectionDot = document.getElementById('connectionDot');
+                const connectionText = document.getElementById('connectionText');
+                
+                if (isConnected) {
+                    connectionDot.className = 'status-dot connected';
+                    connectionText.textContent = 'Online';
+                } else {
+                    connectionDot.className = 'status-dot disconnected';
+                    connectionText.textContent = 'Offline';
+                }
+            };
             
             // Lapváltás globálissá tétele
             window.showPage = function(pageId) {
@@ -339,7 +559,42 @@
                 });
                 
                 document.getElementById(pageId).classList.add('active');
+                
+                if (pageId === 'page2' && selectedUser) {
+                    currentUserInfo.textContent = `Te most a(z) ${selectedUser}. szám vagy`;
+                }
             };
+            
+            // Szimuláljuk, hogy más felhasználók is használják a rendszert
+            window.simulateOtherUserActivity = function() {
+                if (!simulateRealTimeSync.isConnected) {
+                    showNotification('Előbb kapcsolódj a hálózathoz!');
+                    simulateRealTimeSync.connect();
+                    return;
+                }
+                
+                // Véletlenszerű felhasználó aktiválása/deaktiválása
+                const randomUser = Math.floor(Math.random() * 14) + 1;
+                const randomActive = Math.random() > 0.5;
+                
+                simulateRealTimeSync.send({
+                    type: "user_alert",
+                    userId: randomUser,
+                    active: randomActive,
+                    timestamp: new Date().toISOString(),
+                    simulated: true
+                });
+                
+                showNotification(`Szimulált aktivitás: ${randomUser}. felhasználó`);
+            };
+            
+            // Kapcsolat állapotának váltása (demóhoz)
+            setInterval(() => {
+                // 10% esély a kapcsolat váltására (csak demóhoz)
+                if (Math.random() < 0.1) {
+                    simulateRealTimeSync.toggleConnection();
+                }
+            }, 10000);
         });
     </script>
 </body>
