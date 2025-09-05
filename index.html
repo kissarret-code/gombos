@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jelző Alkalmazás</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #4a6cfa;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .status-panel {
+            padding: 30px 20px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            border: 5px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .status-message {
+            font-size: 22px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .button-container {
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f8f8;
+        }
+        
+        .alert-button {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(to right, #ff5e62, #ff9966);
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 94, 98, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .alert-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 94, 98, 0.6);
+        }
+        
+        .alert-button:active {
+            transform: translateY(1px);
+        }
+        
+        .alert-active {
+            background: linear-gradient(to right, #00b09b, #96c93d);
+            box-shadow: 0 4px 15px rgba(0, 176, 155, 0.4);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background-color: #4a6cfa;
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(150%);
+            transition: transform 0.5s ease;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .history {
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-top: 1px solid #ddd;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .history-title {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #555;
+            text-align: center;
+        }
+        
+        .history-item {
+            padding: 8px 12px;
+            background-color: white;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 15px;
+                font-size: 20px;
+            }
+            
+            .status-indicator {
+                width: 100px;
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            Jelző Alkalmazás
+        </div>
+        
+        <div class="status-panel">
+            <div class="status-indicator" id="statusIndicator">
+                <svg id statusIcon width="50" height="50" viewBox="0 0 24 24">
+                    <path fill="#aaa" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+                </svg>
+            </div>
+            <div class="status-message" id="statusMessage">Nincs aktív jelzés</div>
+        </div>
+        
+        <div class="button-container">
+            <button class="alert-button" id="alertButton">JELZÉS KÜLDÉSE</button>
+        </div>
+        
+        <div class="history">
+            <div class="history-title">Legutóbbi jelzések</div>
+            <div id="historyContainer"></div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">Jelzés elküldve!</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const alertButton = document.getElementById('alertButton');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusIcon = document.getElementById('statusIcon');
+            const notification = document.getElementById('notification');
+            const historyContainer = document.getElementById('historyContainer');
+            
+            let alertActive = false;
+            let historyCount = 0;
+            
+            alertButton.addEventListener('click', function() {
+                if (!alertActive) {
+                    // Jelzés aktiválása
+                    alertActive = true;
+                    statusIndicator.style.backgroundColor = '#e6f7ee';
+                    statusIndicator.style.borderColor = '#00b09b';
+                    statusMessage.textContent = 'Jelzés aktív!';
+                    statusMessage.style.color = '#00b09b';
+                    alertButton.textContent = 'JELZÉS VISSZAVONÁSA';
+                    alertButton.classList.add('alert-active');
+                    
+                    // Ikon változtatása
+                    statusIcon.innerHTML = '<path fill="#00b09b" d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M10,17l-5-5l1.41-1.41L10,14.17l7.59-7.59L19,8L10,17z"/>';
+                    
+                    // Értesítés megjelenítése
+                    showNotification('Jelzés elküldve!');
+                    
+                    // Jelzés hozzáadása a történethez
+                    addToHistory('Jelzés küldve');
+                } else {
+                    // Jelzés visszavonása
+                    alertActive = false;
+                    statusIndicator.style.backgroundColor = '#f0f0f0';
+                    statusIndicator.style.borderColor = '#e0e0e0';
+                    statusMessage.textContent = 'Nincs aktív jelzés';
+                    statusMessage.style.color = '#333';
+                    alertButton.textContent = 'JELZÉS KÜLDÉSE';
+                    alertButton.classList.remove('alert-active');
+                    
+                    // Ikon visszaállítása
+                    statusIcon.innerHTML = '<path fill="#aaa" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>';
+                    
+                    // Értesítés megjelenítése
+                    showNotification('Jelzés visszavonva!');
+                    
+                    // Jelzés hozzáadása a történethez
+                    addToHistory('Jelzés visszavonva');
+                }
+            });
+            
+            function showNotification(message) {
+                notification.textContent = message;
+                notification.classList.add('show');
+                
+                setTimeout(function() {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+            
+            function addToHistory(action) {
+                historyCount++;
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('hu-HU');
+                
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.textContent = `${historyCount}. ${action} - ${timeString}`;
+                
+                historyContainer.prepend(historyItem);
+                
+                // Legfeljebb 5 elem legyen a történetben
+                if (historyContainer.children.length > 5) {
+                    historyContainer.removeChild(historyContainer.lastChild);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
