@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valós Idejű Csoportos Jelző</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         * {
             margin: 0;
@@ -276,8 +274,8 @@
             <div></div>
             <div>Valós Idejű Csoportos Jelző</div>
             <div class="connection-status">
-                <div class="status-dot" id="connectionDot"></div>
-                <span id="connectionText">Kapcsolódás...</span>
+                <div class="status-dot connected" id="connectionDot"></div>
+                <span id="connectionText">Online</span>
             </div>
         </div>
         
@@ -335,27 +333,13 @@
     </div>
 
     <script>
-        // Firebase konfiguráció
-        const firebaseConfig = {
-            apiKey: "AIzaSyCHNlV8V9j0TF1e1t6XkLq8g1WtKkQZ7Xw",
-            authDomain: "realtime-signal-app.firebaseapp.com",
-            databaseURL: "https://realtime-signal-app-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "realtime-signal-app",
-            storageBucket: "realtime-signal-app.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcd1234efgh5678ijkl90"
-        };
-        
-        // Firebase inicializálása
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        
         // Alkalmazás állapota
         const appState = {
             selectedUser: null,
             alertActive: false,
             userStatuses: Array(14).fill(false),
-            isConnected: false
+            isConnected: true,
+            lastUpdate: 0
         };
 
         // Oldal betöltésekor inicializálás
@@ -363,51 +347,9 @@
             initUserSelection();
             initStatusGrid();
             setupEventListeners();
-            setupFirebase();
+            loadInitialStatuses();
+            startStatusSync();
         });
-
-        // Firebase beállítása
-        function setupFirebase() {
-            // Kapcsolat állapotának figyelése
-            const connectedRef = firebase.database().ref(".info/connected");
-            connectedRef.on("value", function(snap) {
-                appState.isConnected = snap.val() === true;
-                updateConnectionStatus(appState.isConnected);
-                
-                if (appState.isConnected) {
-                    // Kapcsolódás esetén betöltjük az aktuális állapotokat
-                    loadInitialStatuses();
-                }
-            });
-            
-            // Adatbázis változásainak figyelése
-            const statusRef = firebase.database().ref('userStatuses');
-            statusRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    for (let i = 0; i < 14; i++) {
-                        appState.userStatuses[i] = data[i] || false;
-                    }
-                    updateStatusDisplay();
-                    updateLastUpdateTime();
-                }
-            });
-        }
-        
-        // Kezdeti állapotok betöltése
-        function loadInitialStatuses() {
-            const statusRef = firebase.database().ref('userStatuses');
-            statusRef.once('value').then((snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    for (let i = 0; i < 14; i++) {
-                        appState.userStatuses[i] = data[i] || false;
-                    }
-                    updateStatusDisplay();
-                    updateLastUpdateTime();
-                }
-            });
-        }
 
         // Felhasználó választó inicializálása
         function initUserSelection() {
@@ -453,16 +395,11 @@
                     return;
                 }
                 
-                if (!appState.isConnected) {
-                    showNotification('Nincs kapcsolat! Nem lehet jelzést küldeni.');
-                    return;
-                }
-                
                 appState.alertActive = !appState.alertActive;
                 appState.userStatuses[appState.selectedUser - 1] = appState.alertActive;
                 
-                // Firebase adatbázis frissítése
-                updateFirebaseStatus();
+                // Lokális tároló frissítése
+                updateLocalStorage();
                 
                 // Gomb szöveg frissítése
                 toggleAlertButton.innerHTML = appState.alertActive ? 
@@ -476,17 +413,56 @@
             });
         }
 
-        // Firebase állapot frissítése
-        function updateFirebaseStatus() {
-            const statusRef = firebase.database().ref('userStatuses');
-            statusRef.set(appState.userStatuses)
-                .then(() => {
-                    console.log("Állapot sikeresen frissítve");
-                })
-                .catch((error) => {
-                    console.error("Hiba az állapot frissítésekor:", error);
-                    showNotification('Hiba történt a frissítés során!');
-                });
+        // Lokális tároló frissítése
+        function updateLocalStorage() {
+            localStorage.setItem('userStatuses', JSON.stringify(appState.userStatuses));
+            localStorage.setItem('lastUpdate', Date.now().toString());
+        }
+
+        // Kezdeti állapotok betöltése
+        function loadInitialStatuses() {
+            const savedStatuses = localStorage.getItem('userStatuses');
+            const lastUpdate = localStorage.getItem('lastUpdate');
+            
+            if (savedStatuses) {
+                appState.userStatuses = JSON.parse(savedStatuses);
+                updateStatusDisplay();
+                
+                if (lastUpdate) {
+                    appState.lastUpdate = parseInt(lastUpdate);
+                    updateLastUpdateTime();
+                }
+            }
+        }
+
+        // Státusz szinkronizálás indítása
+        function startStatusSync() {
+            // Szimuláljuk a valós idejű frissítést
+            setInterval(function() {
+                const lastUpdate = localStorage.getItem('lastUpdate');
+                
+                if (lastUpdate && parseInt(lastUpdate) > appState.lastUpdate) {
+                    const savedStatuses = localStorage.getItem('userStatuses');
+                    
+                    if (savedStatuses) {
+                        appState.userStatuses = JSON.parse(savedStatuses);
+                        appState.lastUpdate = parseInt(lastUpdate);
+                        
+                        updateStatusDisplay();
+                        updateLastUpdateTime();
+                        
+                        // Saját állapot frissítése, ha van kiválasztott felhasználó
+                        if (appState.selectedUser) {
+                            appState.alertActive = appState.userStatuses[appState.selectedUser - 1];
+                            const toggleAlertButton = document.getElementById('toggleAlertButton');
+                            toggleAlertButton.innerHTML = appState.alertActive ? 
+                                '<i class="fas fa-bell-slash"></i> JELZÉS VISSZAVONÁSA' : 
+                                '<i class="fas fa-bell"></i> JELZÉS KÜLDÉSE';
+                            toggleAlertButton.classList.toggle('alert-active', appState.alertActive);
+                        }
+                    }
+                }
+            }, 1000); // Másodpercenként ellenőriz
         }
 
         // Felhasználó kiválasztása
@@ -538,24 +514,10 @@
             }
         }
         
-        // Kapcsolat állapotának frissítése
-        function updateConnectionStatus(isConnected) {
-            const connectionDot = document.getElementById('connectionDot');
-            const connectionText = document.getElementById('connectionText');
-            
-            if (isConnected) {
-                connectionDot.className = 'status-dot connected';
-                connectionText.textContent = 'Online';
-            } else {
-                connectionDot.className = 'status-dot disconnected';
-                connectionText.textContent = 'Offline';
-            }
-        }
-        
         // Utolsó frissítés idejének frissítése
         function updateLastUpdateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('hu-HU');
+            const date = new Date(appState.lastUpdate);
+            const timeString = date.toLocaleTimeString('hu-HU');
             document.getElementById('lastUpdate').textContent = `Utolsó frissítés: ${timeString}`;
         }
 
@@ -586,14 +548,10 @@
         
         // Összes állapot visszaállítása
         function resetAllStatuses() {
-            if (!appState.isConnected) {
-                showNotification('Nincs kapcsolat! Nem lehet visszaállítani.');
-                return;
-            }
-            
             if (confirm("Biztosan vissza szeretnéd állítani az összes jelzést?")) {
                 appState.userStatuses = Array(14).fill(false);
-                updateFirebaseStatus();
+                updateLocalStorage();
+                updateStatusDisplay();
                 
                 // Saját állapot frissítése, ha van kiválasztott felhasználó
                 if (appState.selectedUser) {
